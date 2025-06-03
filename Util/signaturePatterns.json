@@ -1,0 +1,10 @@
+[
+    {
+        "name": "illegalTemplate1",
+        "patterns": ["initBetting()", "class=\"game-wrap\"", "src=\"/static/js/main.js\""]
+    },
+    {
+        "name": "casinoCloneA",
+        "patterns": ["function launchGame()", "href=\"/slot\"", "casino.css"]
+    }
+]
