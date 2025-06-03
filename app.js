@@ -1,90 +1,39 @@
-import express from "express";
-import axios from "axios";
-import * as cheerio from "cheerio";
-const app = express();
-app.use(express.static("Asset"));
+import generateDomains from './Domain/domainGenerator.js';
+import isDomainActive from './Domain/domainChecker.js';
+import crawlSite from './Crawler/crawler.js';
+import { saveResultsToFile } from './Util/saveResults.js';
+import { printSummary } from './Util/printSummary.js';
 
-// const dns = require('dns');
-// const dnsPromises = dns.promises;
+async function run() {
+    // 도메인 후보 생성
+    const domains = generateDomains();
+    // 결과저장을 위한 변수
+    const results = [];
 
-// const options = {
-
-//     family: 6,
-//     hints: dns.ADDRCONFIG | dns.V4MAPPED,
-// };
-
-// const ip = await dnsPromises.lookup('geeksforgeeks.org', options);
-
-import dns from 'dns/promises';
-
-async function checkDomain(domain) {
-  try {
-    const result = await dns.lookup(domain);
-    console.log(`${domain} -> ${result.address}`, '\n', result);
-  } catch (error) {
-    if (error.code === 'ENOTFOUND') {
-      console.log(`${domain} 는 존재하지 않습니다.`);
-    } else {
-      console.log(`${domain} 에서 다른 오류 발생:`, error.message);
+    // 후보들로 반복문 실행
+    for (const domain of domains) {
+        // 도메인이 실제존재하는지 확인 true/false를 isActive 변수에 할당
+        const isActive = await isDomainActive(domain);
+        
+        // isActive가 true면 크롤링 실행 및 결과 저장
+        if (isActive) {
+            const result = await crawlSite(domain);
+            results.push(result);
+        } else {
+            // 도메인이 비활성인 경우도 기록
+            results.push({
+                domain,
+                title: null,
+                isSuspicious: false,
+                sigName: null,
+                matchRatio: 0,
+                note: '비활성 도메인'
+            });
+        }
     }
-  }
+
+    printSummary(results);
+    saveResultsToFile(results);
 }
 
-checkDomain('tistory.com');
-
-
-// app.get("/api/chart", async (req, res) => {
-//   try {
-//     const html = await axios.get("https://www.genie.co.kr/chart/top200");
-//     const $ = cheerio.load(html.data);
-//     const bodyList = $("tr.list");
-//     const ulList = [];
-
-//     bodyList.each((i, element) => {
-//       ulList.push({
-//         rank: i + 1,
-//         title: $(element).find("td.info a.title").text().replace(/\s/g, ""),
-//         artist: $(element).find("td.info a.artist").text().replace(/\s/g, ""),
-//       });
-//     });
-
-//     console.log(ulList);
-
-//     res.json(ulList);
-//   } catch (err) {
-//     res.status(500).json({ error: "크롤링 실패" });
-//   }
-// });
-
-// app.listen(3000, () => {
-//   console.log("http://localhost:3000 실행 중");
-// });
-
-
-// 내가 활성화시킨 페이지
-app.get("/api/chart", async (req, res) => {
-  try {
-    const html = await axios.get("http://localhost:8080/spring_mybatis/");
-    const $ = cheerio.load(html.data);
-    const bodyList = $("tr.list");
-    const ulList = [];
-
-    bodyList.each((i, element) => {
-      ulList.push({
-        rank: i + 1,
-        title: $(element).find("td.info a.title").text().replace(/\s/g, ""),
-        artist: $(element).find("td.info a.artist").text().replace(/\s/g, ""),
-      });
-    });
-
-    console.log(ulList);
-
-    res.json(ulList);
-  } catch (err) {
-    res.status(500).json({ error: "크롤링 실패" });
-  }
-});
-
-app.listen(3000, () => {
-  console.log("http://localhost:3000 실행 중");
-});
+run();
